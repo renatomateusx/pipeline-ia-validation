@@ -82,7 +82,7 @@ async function run() {
             core.info(`Analyzing chunk ${i + 1} of ${chunks.length}`);
             
             const chunkResult = await analyzeChunk({
-                content: chunks[i],
+                content: decode(chunks[i]),
                 index: i,
                 total: chunks.length
             }, openaiToken);
