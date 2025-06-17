@@ -1,18 +1,12 @@
-name: 'IA Pipeline Validation'
-description: 'Valida etapas de CI/CD usando IA'
-
+name: "IA Direct OpenAI"
+description: "Valida payload direto na OpenAI"
 inputs:
-  token:
-    description: 'Token de acesso à API'
+  openai_token:
     required: true
+    description: "Token da OpenAI"
   payload:
-    description: 'Payload para validação'
     required: true
-  api_url:
-    description: 'URL da API de validação'
-    required: false
-    default: 'https://api.pipeline-validation.com'
-
+    description: "JSON para validação"
 runs:
-  using: 'node16'
-  main: 'index.js' 
+  using: "node20"
+  main: "index_alt.js"
