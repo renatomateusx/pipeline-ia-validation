@@ -1,19 +1,15 @@
-const core = require("@actions/core");
-const axios = require("axios");
+const core = require('@actions/core');
+const axios = require('axios');
 const { encode } = require('gpt-3-encoder');
 
-// Configurações internas
-const MAX_TOKENS_PER_CHUNK = 12000;
-const MAX_CHUNKS = 5; // Limite de chunks para evitar custos excessivos
-
-async function splitIntoChunks(text) {
+async function splitIntoChunks(text, maxTokens = 12000) {
     const tokens = encode(text);
     const chunks = [];
     let currentChunk = [];
     let currentLength = 0;
 
     for (const token of tokens) {
-        if (currentLength + 1 > MAX_TOKENS_PER_CHUNK) {
+        if (currentLength + 1 > maxTokens) {
             chunks.push(currentChunk);
             currentChunk = [token];
             currentLength = 1;
@@ -25,11 +21,6 @@ async function splitIntoChunks(text) {
 
     if (currentChunk.length > 0) {
         chunks.push(currentChunk);
-    }
-
-    // Se exceder o limite de chunks, avisa o usuário
-    if (chunks.length > MAX_CHUNKS) {
-        core.warning(`Content was split into ${chunks.length} chunks, which exceeds the recommended limit of ${MAX_CHUNKS}. Consider reducing the content size.`);
     }
 
     return chunks;
@@ -64,15 +55,16 @@ async function analyzeChunk(chunk, openaiToken) {
 
 async function run() {
     try {
-        const openaiToken = core.getInput("openai_token");
-        const payload = core.getInput("payload");
+        const openaiToken = core.getInput('openai_token');
+        const payload = core.getInput('payload');
+        const maxTokensPerChunk = parseInt(core.getInput('max_tokens_per_chunk') || '12000');
 
         // Parse the payload
         const payloadObj = JSON.parse(payload);
         const content = payloadObj.content;
 
         // Split content into chunks
-        const chunks = await splitIntoChunks(content);
+        const chunks = await splitIntoChunks(content, maxTokensPerChunk);
         
         core.info(`Content split into ${chunks.length} chunks for analysis`);
 
@@ -88,19 +80,24 @@ async function run() {
             }, openaiToken);
             
             results.push(chunkResult);
-
-            // Se algum chunk já indicar BLOCK, podemos parar por aí
-            if (chunkResult.includes('DECISION: BLOCK')) {
-                core.warning('Security issue detected in chunk ' + (i + 1));
-                core.setFailed(`Pipeline blocked by AI analysis:\n${chunkResult}`);
-                return;
-            }
         }
 
-        // Se chegou aqui, todos os chunks foram OK
-        core.info('All chunks analyzed successfully');
-        core.setOutput('analysis', results.join('\n\n'));
-        core.info('Pipeline approved by AI analysis');
+        // Combine and analyze results
+        const combinedAnalysis = await analyzeChunk({
+            content: `Here are the analyses of all chunks:\n\n${results.join('\n\n')}`,
+            index: 0,
+            total: 1
+        }, openaiToken);
+
+        // Extract decision
+        const decision = combinedAnalysis.match(/DECISION: (OK|BLOCK)/i);
+        
+        if (decision && decision[1].toUpperCase() === 'OK') {
+            core.info('Pipeline approved by AI analysis');
+            core.setOutput('analysis', combinedAnalysis);
+        } else {
+            core.setFailed(`Pipeline blocked by AI analysis:\n${combinedAnalysis}`);
+        }
 
     } catch (error) {
         core.setFailed(error.message);
@@ -110,4 +107,4 @@ async function run() {
     }
 }
 
-run();
+run(); 

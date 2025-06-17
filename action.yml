@@ -1,9 +1,9 @@
-name: "IA Direct OpenAI"
-description: "Valida payload direto na OpenAI"
+name: 'IA Direct OpenAI'
+description: 'Valida payload diretamente com OpenAI, com gerenciamento automático de tokens'
 inputs:
   openai_token:
     required: true
-    description: "Token da OpenAI"
+    description: "Token da API OpenAI"
   payload:
     required: true
     description: "JSON para validação"
