@@ -37195,6 +37195,7 @@ const { encode } = __nccwpck_require__(1380);
 // Configurações internas
 const MAX_TOKENS_PER_CHUNK = 12000;
 const MAX_CHUNKS = 5; // Limite de chunks para evitar custos excessivos
+const TIMEOUT_MS = 30000; // 30 segundos de timeout
 
 async function splitIntoChunks(text) {
     const tokens = encode(text);
@@ -37226,30 +37227,40 @@ async function splitIntoChunks(text) {
 }
 
 async function analyzeChunk(chunk, openaiToken) {
-    const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-            model: 'gpt-3.5-turbo',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are a security validator for CI/CD pipelines. Analyze the provided chunk and identify security issues. End your response with DECISION: OK or DECISION: BLOCK'
+    try {
+        const response = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+                model: 'gpt-3.5-turbo',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a security validator for CI/CD pipelines. Analyze the provided chunk and identify security issues. End your response with DECISION: OK or DECISION: BLOCK'
+                    },
+                    {
+                        role: 'user',
+                        content: `This is part ${chunk.index + 1} of ${chunk.total} chunks. Analyze this portion:\n\n${chunk.content}`
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${openaiToken}`,
+                    'Content-Type': 'application/json'
                 },
-                {
-                    role: 'user',
-                    content: `This is part ${chunk.index + 1} of ${chunk.total} chunks. Analyze this portion:\n\n${chunk.content}`
-                }
-            ]
-        },
-        {
-            headers: {
-                'Authorization': `Bearer ${openaiToken}`,
-                'Content-Type': 'application/json'
+                timeout: TIMEOUT_MS
             }
-        }
-    );
+        );
 
-    return response.data.choices[0].message.content;
+        const result = response.data.choices[0].message.content;
+        core.info(`Chunk ${chunk.index + 1} analysis completed`);
+        return result;
+    } catch (error) {
+        if (error.code === 'ECONNABORTED') {
+            throw new Error(`Timeout analyzing chunk ${chunk.index + 1} after ${TIMEOUT_MS}ms`);
+        }
+        throw error;
+    }
 }
 
 async function run() {
@@ -37257,9 +37268,14 @@ async function run() {
         const openaiToken = core.getInput("openai_token");
         const payload = core.getInput("payload");
 
+        core.info('Starting analysis...');
+        core.info('Parsing payload...');
+
         // Parse the payload
         const payloadObj = JSON.parse(payload);
         const content = payloadObj.content;
+
+        core.info(`Content length: ${content.length} characters`);
 
         // Split content into chunks
         const chunks = await splitIntoChunks(content);
@@ -37269,10 +37285,10 @@ async function run() {
         // Analyze each chunk
         const results = [];
         for (let i = 0; i < chunks.length; i++) {
-            core.info(`Analyzing chunk ${i + 1} of ${chunks.length}`);
+            core.info(`Starting analysis of chunk ${i + 1} of ${chunks.length}`);
             
             const chunkResult = await analyzeChunk({
-                content: decode(chunks[i]),
+                content: chunks[i],
                 index: i,
                 total: chunks.length
             }, openaiToken);
@@ -37293,10 +37309,13 @@ async function run() {
         core.info('Pipeline approved by AI analysis');
 
     } catch (error) {
-        core.setFailed(error.message);
+        core.error('Error during analysis:');
+        core.error(error.message);
         if (error.response) {
-            console.error(error.response.data);
+            core.error('API Response:');
+            core.error(JSON.stringify(error.response.data, null, 2));
         }
+        core.setFailed(error.message);
     }
 }
 
