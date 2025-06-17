@@ -37190,7 +37190,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"application/1d-interleaved-parityfec
 var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484);
 const axios = __nccwpck_require__(7269);
-const { encode } = __nccwpck_require__(1380);
+const { encode, decode } = __nccwpck_require__(1380);
 
 // Configurações internas
 const MAX_TOKENS_PER_CHUNK = 12000;
@@ -37288,7 +37288,7 @@ async function run() {
             core.info(`Starting analysis of chunk ${i + 1} of ${chunks.length}`);
             
             const chunkResult = await analyzeChunk({
-                content: chunks[i],
+                content: decode(chunks[i]),
                 index: i,
                 total: chunks.length
             }, openaiToken);

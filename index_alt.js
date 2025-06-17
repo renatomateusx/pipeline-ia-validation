@@ -1,6 +1,6 @@
 const core = require("@actions/core");
 const axios = require("axios");
-const { encode } = require('gpt-3-encoder');
+const { encode, decode } = require('gpt-3-encoder');
 
 // Configurações internas
 const MAX_TOKENS_PER_CHUNK = 12000;
@@ -98,7 +98,7 @@ async function run() {
             core.info(`Starting analysis of chunk ${i + 1} of ${chunks.length}`);
             
             const chunkResult = await analyzeChunk({
-                content: chunks[i],
+                content: decode(chunks[i]),
                 index: i,
                 total: chunks.length
             }, openaiToken);
