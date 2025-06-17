@@ -9,4 +9,4 @@ inputs:
     description: "JSON para validação"
 runs:
   using: "node20"
-  main: "index_alt.js"
+  main: "dist/index_alt.js"

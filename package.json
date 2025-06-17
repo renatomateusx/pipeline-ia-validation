@@ -1,0 +1,26 @@
+{
+  "name": "ia-verify",
+  "version": "1.0.0",
+  "description": "GitHub Action para validação de pipelines CI/CD usando IA",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "ncc build index_alt.js -o dist"
+  },
+  "keywords": [
+    "github-actions",
+    "ci-cd",
+    "security",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3"
+  }
+}
