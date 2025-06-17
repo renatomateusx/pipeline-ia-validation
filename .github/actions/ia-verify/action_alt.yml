@@ -1,0 +1,12 @@
+name: "IA Direct OpenAI"
+description: "Valida payload direto na OpenAI"
+inputs:
+  openai_token:
+    required: true
+    description: "Token da OpenAI"
+  payload:
+    required: true
+    description: "JSON para validação"
+runs:
+  using: "node20"
+  main: "index_alt.js"
