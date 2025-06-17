@@ -1,25 +1,22 @@
 {
   "name": "ia-verify",
   "version": "1.0.0",
-  "description": "GitHub Action for CI/CD pipeline validation using OpenAI with smart token splitting",
-  "main": "index.js",
+  "description": "GitHub Action para validação de pipeline CI/CD usando OpenAI com gerenciamento automático de tokens",
+  "main": "index_alt.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "ncc build index.js -o dist"
+    "build": "ncc build index_alt.js -o dist"
   },
   "keywords": [
-    "github-actions",
-    "ci-cd",
+    "actions",
+    "openai",
     "security",
-    "ai",
-    "openai"
+    "validation"
   ],
-  "author": "",
+  "author": "Renato Mateus",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.0",
-    "@actions/github": "^6.0.1",
-    "axios": "^1.6.0",
+    "axios": "^1.6.7",
     "gpt-3-encoder": "^1.1.4"
   },
   "devDependencies": {

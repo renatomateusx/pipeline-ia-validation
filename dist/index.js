@@ -6067,6 +6067,203 @@ module.exports = $gOPD;
 
 /***/ }),
 
+/***/ 6496:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+// This file includes code which was modified from https://github.com/openai/gpt-2
+const fs = __nccwpck_require__(9896)
+const path = __nccwpck_require__(6928);
+
+const encoder = JSON.parse(fs.readFileSync(__nccwpck_require__.ab + "encoder.json"));
+const bpe_file = fs.readFileSync(__nccwpck_require__.ab + "vocab.bpe", 'utf-8');
+
+const range = (x, y) => {
+  const res = Array.from(Array(y).keys()).slice(x)
+  return res
+}
+
+const ord = x => {
+  return x.charCodeAt(0)
+}
+
+const chr = x => {
+  return String.fromCharCode(x)
+}
+
+const textEncoder = new TextEncoder("utf-8")
+const encodeStr = str => {
+  return Array.from(textEncoder.encode(str)).map(x => x.toString())
+}
+
+const textDecoder = new TextDecoder("utf-8")
+const decodeStr = arr => {
+  return textDecoder.decode(new Uint8Array(arr));
+}
+
+const dictZip = (x, y) => {
+  const result = {}
+  x.map((_, i) => { result[x[i]] = y[i] })
+  return result
+}
+
+function bytes_to_unicode() {
+  const bs = range(ord('!'), ord('~') + 1).concat(range(ord('¡'), ord('¬') + 1), range(ord('®'), ord('ÿ') + 1))
+
+  let cs = bs.slice()
+  let n = 0
+  for (let b = 0; b < 2 ** 8; b++) {
+    if (!bs.includes(b)) {
+      bs.push(b)
+      cs.push(2 ** 8 + n)
+      n = n + 1
+    }
+  }
+
+  cs = cs.map(x => chr(x))
+
+  const result = {}
+  bs.map((_, i) => { result[bs[i]] = cs[i] })
+  return result
+}
+
+function get_pairs(word) {
+  const pairs = new Set()
+  let prev_char = word[0]
+  for (let i = 1; i < word.length; i++) {
+    const char = word[i]
+    pairs.add([prev_char, char])
+    prev_char = char
+  }
+  return pairs
+}
+
+const pat = /'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu
+
+const decoder = {}
+Object.keys(encoder).map(x => { decoder[encoder[x]] = x })
+
+const lines = bpe_file.split('\n')
+
+// bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split("\n")[1:-1]]
+const bpe_merges = lines.slice(1, lines.length - 1).map(x => {
+  return x.split(/(\s+)/).filter(function(e) { return e.trim().length > 0 })
+})
+
+const byte_encoder = bytes_to_unicode()
+const byte_decoder = {}
+Object.keys(byte_encoder).map(x => { byte_decoder[byte_encoder[x]] = x })
+
+const bpe_ranks = dictZip(bpe_merges, range(0, bpe_merges.length))
+const cache = new Map;
+
+function bpe(token) {
+  if (cache.has(token)) {
+    return cache.get(token)
+  }``
+
+  let word = token.split('')
+
+  let pairs = get_pairs(word)
+
+  if (!pairs) {
+    return token
+  }
+
+  while (true) {
+    const minPairs = {}
+    Array.from(pairs).map(pair => {
+      const rank = bpe_ranks[pair]
+      minPairs[(isNaN(rank) ? 10e10 : rank)] = pair
+    })
+
+
+
+    const bigram = minPairs[Math.min(...Object.keys(minPairs).map(x => {
+      return parseInt(x)
+    }
+    ))]
+
+    if (!(bigram in bpe_ranks)) {
+      break
+    }
+
+    const first = bigram[0]
+    const second = bigram[1]
+    let new_word = []
+    let i = 0
+
+    while (i < word.length) {
+      const j = word.indexOf(first, i)
+      if (j === -1) {
+        new_word = new_word.concat(word.slice(i))
+        break
+      }
+      new_word = new_word.concat(word.slice(i, j))
+      i = j
+
+      if (word[i] === first && i < word.length - 1 && word[i + 1] === second) {
+        new_word.push(first + second)
+        i = i + 2
+      } else {
+        new_word.push(word[i])
+        i = i + 1
+      }
+    }
+
+    word = new_word
+    if (word.length === 1) {
+      break
+    } else {
+      pairs = get_pairs(word)
+    }
+  }
+
+  word = word.join(' ')
+  cache.set(token, word)
+
+  return word
+}
+
+function encode(text) {
+  let bpe_tokens = []
+  const matches = Array.from(text.matchAll(pat)).map(x => x[0])
+  for (let token of matches) {
+    token = encodeStr(token).map(x => {
+      return byte_encoder[x]
+    }).join('')
+    
+    const new_tokens = bpe(token).split(' ').map(x => encoder[x])
+    bpe_tokens = bpe_tokens.concat(new_tokens)
+  }
+  return bpe_tokens
+}
+
+function decode(tokens) {
+  let text = tokens.map(x => decoder[x]).join('')
+  text = decodeStr(text.split('').map(x => byte_decoder[x]))
+  return text
+}
+
+module.exports = {
+  encode,
+  decode
+};
+
+/***/ }),
+
+/***/ 1380:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { encode, decode } = __nccwpck_require__(6496);
+
+module.exports = {
+  encode,
+  decode,
+};
+
+
+/***/ }),
+
 /***/ 3336:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -30268,14 +30465,6 @@ module.exports = {
 
 /***/ }),
 
-/***/ 1491:
-/***/ ((module) => {
-
-module.exports = eval("require")("gpt-3-encoder");
-
-
-/***/ }),
-
 /***/ 2613:
 /***/ ((module) => {
 
@@ -37001,16 +37190,20 @@ module.exports = /*#__PURE__*/JSON.parse('{"application/1d-interleaved-parityfec
 var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484);
 const axios = __nccwpck_require__(7269);
-const { encode } = __nccwpck_require__(1491);
+const { encode } = __nccwpck_require__(1380);
 
-async function splitIntoChunks(text, maxTokens = 12000) {
+// Configurações internas
+const MAX_TOKENS_PER_CHUNK = 12000;
+const MAX_CHUNKS = 5; // Limite de chunks para evitar custos excessivos
+
+async function splitIntoChunks(text) {
     const tokens = encode(text);
     const chunks = [];
     let currentChunk = [];
     let currentLength = 0;
 
     for (const token of tokens) {
-        if (currentLength + 1 > maxTokens) {
+        if (currentLength + 1 > MAX_TOKENS_PER_CHUNK) {
             chunks.push(currentChunk);
             currentChunk = [token];
             currentLength = 1;
@@ -37024,6 +37217,11 @@ async function splitIntoChunks(text, maxTokens = 12000) {
         chunks.push(currentChunk);
     }
 
+    // Se exceder o limite de chunks, avisa o usuário
+    if (chunks.length > MAX_CHUNKS) {
+        core.warning(`Content was split into ${chunks.length} chunks, which exceeds the recommended limit of ${MAX_CHUNKS}. Consider reducing the content size.`);
+    }
+
     return chunks;
 }
 
@@ -37031,7 +37229,7 @@ async function analyzeChunk(chunk, openaiToken) {
     const response = await axios.post(
         'https://api.openai.com/v1/chat/completions',
         {
-            model: 'gpt-4',
+            model: 'gpt-3.5-turbo',
             messages: [
                 {
                     role: 'system',
@@ -37056,16 +37254,15 @@ async function analyzeChunk(chunk, openaiToken) {
 
 async function run() {
     try {
-        const openaiToken = core.getInput('openai_token');
-        const payload = core.getInput('payload');
-        const maxTokensPerChunk = parseInt(core.getInput('max_tokens_per_chunk') || '12000');
+        const openaiToken = core.getInput("openai_token");
+        const payload = core.getInput("payload");
 
         // Parse the payload
         const payloadObj = JSON.parse(payload);
         const content = payloadObj.content;
 
         // Split content into chunks
-        const chunks = await splitIntoChunks(content, maxTokensPerChunk);
+        const chunks = await splitIntoChunks(content);
         
         core.info(`Content split into ${chunks.length} chunks for analysis`);
 
@@ -37081,24 +37278,19 @@ async function run() {
             }, openaiToken);
             
             results.push(chunkResult);
+
+            // Se algum chunk já indicar BLOCK, podemos parar por aí
+            if (chunkResult.includes('DECISION: BLOCK')) {
+                core.warning('Security issue detected in chunk ' + (i + 1));
+                core.setFailed(`Pipeline blocked by AI analysis:\n${chunkResult}`);
+                return;
+            }
         }
 
-        // Combine and analyze results
-        const combinedAnalysis = await analyzeChunk({
-            content: `Here are the analyses of all chunks:\n\n${results.join('\n\n')}`,
-            index: 0,
-            total: 1
-        }, openaiToken);
-
-        // Extract decision
-        const decision = combinedAnalysis.match(/DECISION: (OK|BLOCK)/i);
-        
-        if (decision && decision[1].toUpperCase() === 'OK') {
-            core.info('Pipeline approved by AI analysis');
-            core.setOutput('analysis', combinedAnalysis);
-        } else {
-            core.setFailed(`Pipeline blocked by AI analysis:\n${combinedAnalysis}`);
-        }
+        // Se chegou aqui, todos os chunks foram OK
+        core.info('All chunks analyzed successfully');
+        core.setOutput('analysis', results.join('\n\n'));
+        core.info('Pipeline approved by AI analysis');
 
     } catch (error) {
         core.setFailed(error.message);
@@ -37108,7 +37300,7 @@ async function run() {
     }
 }
 
-run(); 
+run();
 module.exports = __webpack_exports__;
 /******/ })()
 ;
